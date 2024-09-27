@@ -198,12 +198,18 @@ trait DecoderInstances:
 
   /** A decoder for `String` values */
   given stringDecoder: Decoder[String] =
-  Decoder.fromFunction { case Json.Str(s) => Some(s) }
+  Decoder.fromFunction {
+    case Json.Str(s) => Some(s)
+    case _           => None
+  }
   // DONE Define a given instance of type `Decoder[String]`
 
   /** A decoder for `Boolean` values */
   given boolDecoder: Decoder[Boolean] =
-  Decoder.fromFunction { case Json.Bool(b) => Some(b) }
+  Decoder.fromFunction {
+    case Json.Bool(b) => Some(b)
+    case _            => None
+  }
   // DONE Define a given instance of type `Decoder[Boolean]`
 
   /**
@@ -241,6 +247,7 @@ trait DecoderInstances:
     //   - otherwise, return a failure (`None`)
     Decoder.fromFunction {
       case Json.Arr(arr) => decodeAllItems(arr)
+      case _             => None
     }
 
   /**
@@ -250,6 +257,7 @@ trait DecoderInstances:
   def field[A](name: String)(using decoder: Decoder[A]): Decoder[A] =
     Decoder.fromFunction {
       case Json.Obj(fields) => fields.get(name).flatMap(decoder.decode)
+      case _                => None
     }
 //    ObjectEncoder.fromFunction(a => Json.Obj(Map(name -> encoder.encode(a))))
 
