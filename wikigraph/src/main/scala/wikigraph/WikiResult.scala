@@ -1,8 +1,10 @@
 package wikigraph
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 import wikigraph.errors.WikiError
 import wikigraph.errors.WikiException
+
+import scala.util.Success
 
 /**
   * The result of an asynchronous computation which may fail.
@@ -89,10 +91,12 @@ case class WikiResult[A](value: Future[Either[Seq[WikiError], A]]):
     * Hint: The async part has been handled for you. You need to zip the two Either 
     */
   def zip[B](that: WikiResult[B])(using ExecutionContext): WikiResult[(A, B)] =
-    def zipEithersAcc(a: Either[Seq[WikiError], A], b: Either[Seq[WikiError], B]): Either[Seq[WikiError], (A, B)] =
-      
+    def zipEithersAcc(a: Either[Seq[WikiError], A], b: Either[Seq[WikiError], B]): Either[Seq[WikiError], (A, B)] = (a, b) match
+      case (Right(sa), Right(sb)) => Right(sa, sb)
+      case (Left(fa), Right(sb))  => Left(fa)
+      case (Right(sa), Left(fb))  => Left(fb)
+      case (Left(fa), Left(fb))   => Left(fa ++ fb)
 
-      ???
     WikiResult(this.value.flatMap { thisEither =>
       that.value.map { thatEither =>
         zipEithersAcc(thisEither, thatEither)
@@ -151,6 +155,12 @@ object WikiResult:
     * lecture “Manipulating Validated Values”.
     */
   def traverse[A, B](as: Seq[A])(f: A => WikiResult[B])(using ExecutionContext): WikiResult[Seq[B]] =
-    ???
+    as.foldLeft(successful(Vector.empty)) {
+      (acc, a) =>
+        acc.zip(f(a)).map {
+          case (seq, b) => seq :+ b
+        }
+    }
+
 
 end WikiResult
