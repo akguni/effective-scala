@@ -2,8 +2,9 @@ package wikigraph
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-
 import Articles.ArticleId
+
+import java.util
 
 
 /**
@@ -26,7 +27,9 @@ final class Wikigraph(client: Wikipedia):
     * return a `Set`. Remember that you can use `.toSeq` and `.toSet`.
     */
   def namedLinks(of: ArticleId): WikiResult[Set[String]] =
-    ???
+    this.client.linksFrom(of).flatMap { links =>
+      WikiResult.traverse(links.toSeq)(client.nameOfArticle).map(_.toSet)
+    }
 
   /**
     * Computes the distance between two pages using breadth first search.
