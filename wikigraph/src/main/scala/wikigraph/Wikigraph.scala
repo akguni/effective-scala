@@ -84,7 +84,20 @@ final class Wikigraph(client: Wikipedia):
       *       including the failed node. Refer to the documentation of [[wikigraph.WikiResult#fallbackTo]].
       */
     def iter(visited: Set[ArticleId], q: Queue[(Int, ArticleId)]): WikiResult[Option[Int]] =
-      ???
+      if q.isEmpty then WikiResult.successful(None)
+      else
+        val (dist, art) = q.head
+        if dist > maxDepth then WikiResult.successful(None)
+        else
+          val nextPages = this.client.linksFrom(art)
+          nextPages.flatMap { links =>
+            if links.contains(target) then WikiResult.successful(Some(dist))
+            else
+              val visitedNew = visited ++ links
+              val queueNew = q.tail.enqueueAll(links.diff(visited)
+                .map(id => (dist + 1, id)))
+              iter(visitedNew, queueNew)
+          }.fallbackTo(iter(visited, q.tail))
     end iter
     if start == target then
       // The start node is the one we are looking for: the search succeeds with
@@ -124,5 +137,18 @@ final class Wikigraph(client: Wikipedia):
     *       `breadthFirstSearch`
     */
   def distanceMatrix(titles: List[String], maxDepth: Int = 50): WikiResult[Seq[(String, String, Option[Int])]] =
-    ???
+    val idsResult = WikiResult.traverse(titles)(client.searchId)
+    idsResult.flatMap { ids =>
+      val idTitles = for
+          (id1, title1) <- ids.zip(titles)
+          (id2, title2) <- ids.zip(titles)
+          if id1 != id2
+        yield (id1, title1, id2, title2)
+      val dists = idTitles.map {
+        case (id1, title1, id2, title2) => breadthFirstSearch(id1, id2, maxDepth)
+          .map(dist => (title1, title2, dist))
+      }
+      WikiResult.traverse(dists)(identity)
+    }
+
 end Wikigraph
